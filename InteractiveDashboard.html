@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #2563eb;
+            --accent2: #7c3aed;
+            --bg: #f4f7fa;
+            --glass-bg: rgba(255,255,255,0.7);
+            --glass-blur: blur(18px);
+            --sidebar-bg: rgba(37,99,235,0.95);
+            --sidebar-active: #fff;
+            --sidebar-inactive: #b6c6e3;
+            --topbar-bg: rgba(255,255,255,0.85);
+            --card-bg: rgba(255,255,255,0.85);
+            --shadow: 0 8px 32px 0 rgba(37,99,235,0.10), 0 1.5px 8px rgba(124,58,237,0.08);
+            --border: #e5e7eb;
+            --text: #18181b;
+            --text-light: #6b7280;
+            --focus: #2563eb44;
+        }
+        html {
+            font-size: 18px;
+        }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f4f7fa 60%, #e0e7ef 100%) fixed;
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+        }
+        .sidebar {
+            width: 80px;
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 32px 0 16px 0;
+            gap: 32px;
+            min-height: 100vh;
+            position: fixed;
+            left: 0; top: 0; bottom: 0;
+            z-index: 100;
+            box-shadow: 2px 0 16px 0 rgba(37,99,235,0.08);
+        }
+        .sidebar .logo {
+            font-size: 2.1rem;
+            color: #fff;
+            font-weight: 900;
+            margin-bottom: 24px;
+            letter-spacing: -2px;
+        }
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            width: 100%;
+        }
+        .sidebar-nav button {
+            background: none;
+            border: none;
+            color: var(--sidebar-inactive);
+            font-size: 1.6rem;
+            padding: 12px 0;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s;
+            border-radius: 12px;
+            width: 100%;
+            outline: none;
+        }
+        .sidebar-nav button.active, .sidebar-nav button:focus {
+            color: var(--sidebar-active);
+            background: rgba(255,255,255,0.12);
+        }
+        .sidebar .sidebar-bottom {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            align-items: center;
+        }
+        .sidebar .sidebar-bottom img {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+        .main {
+            margin-left: 80px;
+            width: 100%;
+            min-height: 100vh;
+            background: none;
+            display: flex;
+            flex-direction: column;
+        }
+        .topbar {
+            width: 95%;
+            background: var(--topbar-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 36px;
+            height: 72px;
+            box-shadow: 0 2px 16px 0 rgba(37,99,235,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: var(--glass-blur);
+            margin-left: 0.2%;
+        }
+        .topbar .page-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent2);
+            letter-spacing: -1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .topbar .search {
+            background: #f4f7fa;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 1rem;
+            color: var(--text);
+            margin-right: 18px;
+        }
+        .topbar .actions {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+        .topbar .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 2px solid var(--accent2);
+        }
+        .topbar .notif {
+            font-size: 1.5rem;
+            color: var(--accent2);
+            background: none;
+            border: none;
+            cursor: pointer;
+            position: relative;
+        }
+        .topbar .notif-dot {
+            position: absolute;
+            top: 6px; right: 6px;
+            width: 8px; height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+        .topbar .dark-toggle {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--accent2);
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .dashboard-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 36px 36px 0 36px;
+            display: flex;
+            flex-direction: column;
+            gap: 36px;
+        }
+        .stats-row {
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            flex: 1 1 220px;
+            min-width: 220px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 32px 18px 28px 18px;
+            text-align: center;
+            transition: box-shadow 0.25s, transform 0.18s, background 0.3s;
+            position: relative;
+            backdrop-filter: var(--glass-blur);
+            border: 1.5px solid rgba(124,58,237,0.10);
+            margin-bottom: 0;
+        }
+        .stat-card:hover {
+            box-shadow: 0 16px 48px rgba(124,58,237,0.18);
+            transform: translateY(-3px) scale(1.04);
+            background: rgba(255,255,255,0.82);
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--accent2);
+            margin-bottom: 8px;
+            transition: color 0.3s, text-shadow 0.3s;
+            text-shadow: 0 2px 12px rgba(124,58,237,0.10);
+            letter-spacing: -1px;
+        }
+        .stat-label {
+            font-size: 1.12rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+        .stat-icon {
+            font-size: 2.3rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+            display: block;
+            transition: color 0.3s, transform 0.3s;
+        }
+        .stat-card:hover .stat-icon {
+            color: var(--accent2);
+            transform: scale(1.18) rotate(-8deg);
+        }
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 32px;
+        }
+        .chart-container {
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 24px 18px 12px 18px;
+            transition: box-shadow 0.25s, transform 0.18s, background 0.3s;
+            position: relative;
+            backdrop-filter: var(--glass-blur);
+            border: 1.5px solid rgba(124,58,237,0.10);
+        }
+        .chart-container:hover {
+            box-shadow: 0 16px 48px rgba(124,58,237,0.18);
+            transform: translateY(-3px) scale(1.02);
+            background: rgba(255,255,255,0.82);
+        }
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--accent2);
+            margin-bottom: 14px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            letter-spacing: -0.5px;
+        }
+        .chart-title span {
+            font-size: 1.3em;
+            transition: color 0.3s, transform 0.3s;
+        }
+        .chart-container:hover .chart-title span {
+            color: var(--accent);
+            transform: scale(1.18) rotate(8deg);
+        }
+        .chart-wrapper {
+            height: 260px;
+        }
+        .data-table {
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            margin-top: 32px;
+            padding: 24px 18px 12px 18px;
+            position: relative;
+            backdrop-filter: var(--glass-blur);
+            border: 1.5px solid rgba(124,58,237,0.10);
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        .data-table h3 {
+            color: var(--accent2);
+            margin-bottom: 18px;
+            font-size: 1.18rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .data-table h3 span {
+            font-size: 1.3em;
+            transition: color 0.3s, transform 0.3s;
+        }
+        .data-table:hover h3 span {
+            color: var(--accent);
+            transform: scale(1.18) rotate(-8deg);
+        }
+        .table-search {
+            margin-bottom: 18px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .table-search input {
+            width: 100%;
+            padding: 12px 44px 12px 18px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            font-size: 1.08rem;
+            background: #fff;
+            color: var(--text);
+            box-shadow: 0 1.5px 8px rgba(124,58,237,0.04);
+            transition: border 0.2s, box-shadow 0.2s;
+        }
+        .table-search input:focus {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 3px var(--focus);
+        }
+        .table-search .search-icon {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            color: var(--accent2);
+            pointer-events: none;
+        }
+        .data-table table {
+            width: 100%;
+            min-width: 600px;
+            border-collapse: collapse;
+            font-size: 1.08rem;
+        }
+        th, td {
+            padding: 14px 10px;
+            text-align: left;
+        }
+        th {
+            background: rgba(248,250,252,0.85);
+            color: var(--accent);
+            font-weight: 800;
+            border-bottom: 2px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            letter-spacing: -0.5px;
+        }
+        td {
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+        }
+        tr:nth-child(even) td {
+            background: rgba(241,245,249,0.85);
+        }
+        tr:focus-within {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+        }
+        tr:hover td {
+            background: #e0e7ef;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: var(--accent);
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 6px solid #e5e7eb;
+            border-top: 6px solid var(--accent2);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+            box-shadow: 0 2px 8px rgba(124,58,237,0.13);
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fab {
+            position: fixed;
+            bottom: 36px;
+            right: 36px;
+            width: 62px;
+            height: 62px;
+            background: linear-gradient(135deg, var(--accent2) 0%, var(--accent) 100%);
+            color: #fff;
+            border-radius: 50%;
+            box-shadow: 0 6px 24px rgba(124,58,237,0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.1rem;
+            cursor: pointer;
+            z-index: 100;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+            font-weight: 700;
+            text-shadow: 0 2px 8px rgba(44, 83, 100, 0.18);
+        }
+        .fab:hover, .fab:focus {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+            box-shadow: 0 12px 32px rgba(124,58,237,0.22);
+            transform: scale(1.08);
+        }
+        .fab:active {
+            transform: scale(0.97);
+        }
+        .fab:focus {
+            outline: 3px solid var(--accent2);
+        }
+        @media (max-width: 1200px) {
+            .dashboard-content { padding: 36px 12px 0 12px; }
+        }
+        @media (max-width: 900px) {
+            .charts-row { grid-template-columns: 1fr; }
+            .stats-row { flex-direction: column; gap: 18px; }
+        }
+        @media (max-width: 700px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .dashboard-content { padding: 16px 2vw 0 2vw; }
+            .topbar { padding: 0 10px; }
+            .data-table table { min-width: 480px; }
+            .data-table { padding: 12px 2vw 8px 2vw; }
+        }
+        /* Skeleton Loader Styles */
+        .skeleton {
+            background: linear-gradient(90deg, #e0e7ef 25%, #f4f7fa 50%, #e0e7ef 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.2s infinite linear;
+            border-radius: 8px;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton.stat { height: 48px; margin-bottom: 8px; }
+        .skeleton.label { height: 18px; width: 60%; margin: 0 auto 8px auto; }
+        .skeleton.chart { height: 220px; margin-bottom: 8px; }
+        .skeleton.table-row { height: 32px; margin-bottom: 6px; }
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed; left: 0; top: 0; width: 100vw; height: 100vh;
+            background: rgba(37,99,235,0.18);
+            z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 40px rgba(37,99,235,0.18);
+            padding: 36px 32px 28px 32px;
+            min-width: 320px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            text-align: center;
+        }
+        .modal h2 { color: var(--accent2); font-size: 1.3rem; margin-bottom: 18px; }
+        .modal .close-btn {
+            position: absolute; top: 18px; right: 18px;
+            background: none; border: none; font-size: 1.5rem; color: var(--accent2); cursor: pointer;
+        }
+        /* Section transitions */
+        .dashboard-content, .section-content { transition: opacity 0.4s, transform 0.4s; }
+        .dashboard-content.hide, .section-content.hide { opacity: 0; transform: translateY(30px); pointer-events: none; }
+        .dashboard-content.show, .section-content.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" aria-label="Sidebar navigation">
+        <div class="logo" aria-label="Logo">🧊</div>
+        <div class="sidebar-nav">
+            <button class="active" aria-label="Dashboard" title="Dashboard">🏠</button>
+            <button aria-label="Reports" title="Reports">📊</button>
+            <button aria-label="Users" title="Users">👥</button>
+            <button aria-label="Settings" title="Settings">⚙️</button>
+        </div>
+        <div class="sidebar-bottom">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User avatar" />
+        </div>
+    </nav>
+    <div class="main">
+        <header class="topbar">
+            <div class="page-title"><span>📊</span> Dashboard</div>
+            <input class="search" type="text" placeholder="Search..." aria-label="Search dashboard" />
+            <div class="actions">
+                <button class="notif" aria-label="Notifications" title="Notifications">
+                    🔔<span class="notif-dot"></span>
+                </button>
+                <button class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode" onclick="toggleDarkMode()">🌙</button>
+                <img class="avatar" src="https://randomuser.me/api/portraits/men/32.jpg" alt="User avatar" />
+            </div>
+        </header>
+        <main class="dashboard-content">
+            <div class="header">
+                <h1><span>📊</span> Interactive Dashboard</h1>
+                <p>Dynamic Data Visualization & Analytics</p>
+                <div class="svg-wave">
+                    <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" fill-opacity="0.5" d="M0,32 C360,80 1080,0 1440,48 L1440,80 L0,80 Z">
+                        <animate attributeName="d" dur="8s" repeatCount="indefinite"
+                            values="M0,32 C360,80 1080,0 1440,48 L1440,80 L0,80 Z;
+                                    M0,48 C360,0 1080,80 1440,32 L1440,80 L0,80 Z;
+                                    M0,32 C360,80 1080,0 1440,48 L1440,80 L0,80 Z" />
+                    </path></svg>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stat-card">
+                    <span class="stat-icon">💰</span>
+                    <div class="stat-value" id="totalSales">$0</div>
+                    <div class="stat-label">Total Sales</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">👥</span>
+                    <div class="stat-value" id="totalUsers">0</div>
+                    <div class="stat-label">Active Users</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">📈</span>
+                    <div class="stat-value" id="conversionRate">0%</div>
+                    <div class="stat-label">Conversion Rate</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">🛒</span>
+                    <div class="stat-value" id="avgOrder">$0</div>
+                    <div class="stat-label">Avg Order Value</div>
+                </div>
+            </div>
+            <div class="charts-row">
+                <div class="chart-container">
+                    <h3 class="chart-title"><span>📊</span> Primary Metrics</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="primaryChart" aria-label="Primary Metrics Chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title"><span>🗂️</span> Category Breakdown</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="categoryChart" aria-label="Category Breakdown Chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title"><span>📉</span> Trend Analysis</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="trendChart" aria-label="Trend Analysis Chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title"><span>🕸️</span> Performance Radar</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="radarChart" aria-label="Performance Radar Chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="data-table">
+                <h3><span>📋</span> Detailed Data</h3>
+                <div class="table-search">
+                    <input type="text" id="tableSearch" placeholder="Search by date or value..." aria-label="Search table">
+                    <span class="search-icon">🔍</span>
+                </div>
+                <table id="dataTable" aria-label="Detailed Data Table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Metric</th>
+                            <th>Value</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+    <div class="fab" tabindex="0" title="Help" onclick="openModal('help')">❓</div>
+    <div id="modal-root"></div>
+    <script>
+        let charts = {};
+        let currentSection = 'dashboard';
+        let allData = null;
+        let isLoading = false;
+        // Random data generators
+        function generateSalesData(days) {
+            const data = [];
+            const labels = [];
+            const today = new Date();
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                data.push(Math.floor(Math.random() * 5000) + 1000);
+            }
+            return { labels, data };
+        }
+        function generateCategoryData() {
+            return {
+                labels: ['Electronics', 'Clothing', 'Books', 'Home & Garden', 'Sports'],
+                data: [
+                    Math.floor(Math.random() * 30) + 20,
+                    Math.floor(Math.random() * 25) + 15,
+                    Math.floor(Math.random() * 20) + 10,
+                    Math.floor(Math.random() * 15) + 10,
+                    Math.floor(Math.random() * 10) + 5
+                ]
+            };
+        }
+        function generateRadarData() {
+            return {
+                labels: ['Performance', 'Reliability', 'Usability', 'Security', 'Scalability'],
+                data: [
+                    Math.floor(Math.random() * 40) + 60,
+                    Math.floor(Math.random() * 30) + 70,
+                    Math.floor(Math.random() * 35) + 65,
+                    Math.floor(Math.random() * 25) + 75,
+                    Math.floor(Math.random() * 30) + 70
+                ]
+            };
+        }
+        // Simulate dynamic data fetch
+        function fetchRandomData() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    const days = [7, 30, 90, 365][Math.floor(Math.random()*4)];
+                    resolve({
+                        stats: {
+                            totalSales: Math.floor(Math.random()*100000)+10000,
+                            totalUsers: Math.floor(Math.random()*5000)+500,
+                            conversionRate: (Math.random()*5+2).toFixed(1),
+                            avgOrder: Math.floor(Math.random()*500)+50
+                        },
+                        primary: generateSalesData(days),
+                        category: generateCategoryData(),
+                        trend: generateSalesData(days),
+                        radar: generateRadarData(),
+                        table: generateSalesData(days)
+                    });
+                }, 1200);
+            });
+        }
+        // Section switching
+        function switchSection(section) {
+            currentSection = section;
+            document.querySelectorAll('.sidebar-nav button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.sidebar-nav button[aria-label="${section.charAt(0).toUpperCase()+section.slice(1)}"]`).classList.add('active');
+            document.querySelectorAll('.dashboard-content, .section-content').forEach(el => el.classList.add('hide'));
+            setTimeout(() => {
+                document.querySelectorAll('.dashboard-content, .section-content').forEach(el => el.classList.remove('show'));
+                if(section==='dashboard') {
+                    document.querySelector('.dashboard-content').classList.remove('hide');
+                    document.querySelector('.dashboard-content').classList.add('show');
+                } else {
+                    let sec = document.getElementById(`section-${section}`);
+                    if(!sec) {
+                        sec = document.createElement('div');
+                        sec.className = 'section-content show';
+                        sec.id = `section-${section}`;
+                        sec.innerHTML = `<h2 style="color:var(--accent2);font-size:2rem;margin:2em 0;">${section.charAt(0).toUpperCase()+section.slice(1)}<br><span style='font-size:1.2rem;color:var(--text-light);'>Coming soon...</span></h2>`;
+                        document.querySelector('.main').appendChild(sec);
+                    }
+                    sec.classList.remove('hide');
+                    sec.classList.add('show');
+                }
+            }, 400);
+        }
+        // Modal
+        function openModal(type) {
+            const root = document.getElementById('modal-root');
+            let content = '';
+            if(type==='help') {
+                content = `<h2>Help & Shortcuts</h2><p>Use the sidebar to switch sections.<br>Use the topbar to search/filter.<br>Click the dark mode toggle to switch themes.<br>All data is randomly generated for demo.</p>`;
+            } else if(type==='notif') {
+                content = `<h2>Notifications</h2><ul style='text-align:left;line-height:2;'><li>🔔 New user signed up</li><li>📈 Sales report generated</li><li>🛒 New order received</li></ul>`;
+            }
+            root.innerHTML = `<div class='modal-backdrop' onclick='closeModal(event)'><div class='modal' onclick='event.stopPropagation()'><button class='close-btn' onclick='closeModal(event)'>&times;</button>${content}</div></div>`;
+        }
+        function closeModal(e) {
+            document.getElementById('modal-root').innerHTML = '';
+        }
+        // Dark mode
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('dashboard-dark', document.body.classList.contains('dark'));
+        }
+        if(localStorage.getItem('dashboard-dark')==='true') document.body.classList.add('dark');
+        // Topbar search
+        document.querySelector('.search').addEventListener('input', function() {
+            const val = this.value.toLowerCase();
+            filterTable(val);
+        });
+        function filterTable(val) {
+            const rows = document.querySelectorAll('#tableBody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(val) ? '' : 'none';
+            });
+        }
+        // Sidebar nav
+        document.querySelectorAll('.sidebar-nav button').forEach(btn => {
+            btn.addEventListener('click', e => switchSection(btn.getAttribute('aria-label').toLowerCase()));
+        });
+        // Topbar notif
+        document.querySelector('.notif').addEventListener('click', () => openModal('notif'));
+        // FAB
+        function showHelp(e) { openModal('help'); }
+        // Loading skeletons
+        function showSkeletons() {
+            document.querySelector('.stats-row').innerHTML = Array(4).fill(`<div class='stat-card'><div class='skeleton stat'></div><div class='skeleton label'></div></div>`).join('');
+            document.querySelector('.charts-row').innerHTML = Array(4).fill(`<div class='chart-container'><div class='skeleton chart'></div></div>`).join('');
+            document.querySelector('.data-table tbody').innerHTML = Array(7).fill(`<tr><td colspan='4'><div class='skeleton table-row'></div></td></tr>`).join('');
+        }
+        // Main dashboard update
+        async function updateDashboard() {
+            isLoading = true;
+            showSkeletons();
+            allData = await fetchRandomData();
+            isLoading = false;
+            // Stats
+            document.querySelector('.stats-row').innerHTML = `
+                <div class="stat-card"><span class="stat-icon">💰</span><div class="stat-value" id="totalSales">$${allData.stats.totalSales.toLocaleString()}</div><div class="stat-label">Total Sales</div></div>
+                <div class="stat-card"><span class="stat-icon">👥</span><div class="stat-value" id="totalUsers">${allData.stats.totalUsers.toLocaleString()}</div><div class="stat-label">Active Users</div></div>
+                <div class="stat-card"><span class="stat-icon">📈</span><div class="stat-value" id="conversionRate">${allData.stats.conversionRate}%</div><div class="stat-label">Conversion Rate</div></div>
+                <div class="stat-card"><span class="stat-icon">🛒</span><div class="stat-value" id="avgOrder">$${allData.stats.avgOrder.toLocaleString()}</div><div class="stat-label">Avg Order Value</div></div>
+            `;
+            // Charts
+            document.querySelector('.charts-row').innerHTML = `
+                <div class="chart-container"><h3 class="chart-title"><span>📊</span> Primary Metrics</h3><div class="chart-wrapper"><canvas id="primaryChart"></canvas></div></div>
+                <div class="chart-container"><h3 class="chart-title"><span>🗂️</span> Category Breakdown</h3><div class="chart-wrapper"><canvas id="categoryChart"></canvas></div></div>
+                <div class="chart-container"><h3 class="chart-title"><span>📉</span> Trend Analysis</h3><div class="chart-wrapper"><canvas id="trendChart"></canvas></div></div>
+                <div class="chart-container"><h3 class="chart-title"><span>🕸️</span> Performance Radar</h3><div class="chart-wrapper"><canvas id="radarChart"></canvas></div></div>
+            `;
+            // Table
+            const tbody = document.querySelector('.data-table tbody');
+            tbody.innerHTML = '';
+            allData.table.labels.forEach((label, index) => {
+                const change = index > 0 ? ((allData.table.data[index] - allData.table.data[index - 1]) / allData.table.data[index - 1] * 100).toFixed(1) + '%' : '0%';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${label}</td>
+                    <td>Sales</td>
+                    <td>$${allData.table.data[index].toLocaleString()}</td>
+                    <td style="color: ${parseFloat(change) >= 0 ? '#16b981' : '#ef4444'}">${change}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            // Charts
+            Object.values(charts).forEach(chart => chart.destroy && chart.destroy());
+            charts = {};
+            charts.primary = createChart(document.getElementById('primaryChart').getContext('2d'), 'line', {
+                labels: allData.primary.labels,
+                datasets: [{
+                    label: 'Sales',
+                    data: allData.primary.data,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37,99,235,0.08)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointBackgroundColor: '#2563eb',
+                    pointRadius: 4
+                }]
+            });
+            charts.category = createChart(document.getElementById('categoryChart').getContext('2d'), 'doughnut', {
+                labels: allData.category.labels,
+                datasets: [{
+                    data: allData.category.data,
+                    backgroundColor: [
+                        'rgba(37,99,235,0.8)',
+                        'rgba(124,58,237,0.8)',
+                        'rgba(16,185,129,0.8)',
+                        'rgba(59,130,246,0.8)',
+                        'rgba(236,72,153,0.8)'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            });
+            charts.trend = createChart(document.getElementById('trendChart').getContext('2d'), 'line', {
+                labels: allData.trend.labels,
+                datasets: [{
+                    label: 'Trend',
+                    data: allData.trend.data,
+                    borderColor: '#7c3aed',
+                    backgroundColor: 'rgba(124,58,237,0.08)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#7c3aed',
+                    pointRadius: 4
+                }]
+            });
+            charts.radar = createChart(document.getElementById('radarChart').getContext('2d'), 'radar', {
+                labels: allData.radar.labels,
+                datasets: [{
+                    label: 'Performance Metrics',
+                    data: allData.radar.data,
+                    borderColor: '#16b981',
+                    backgroundColor: 'rgba(16,185,129,0.15)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#16b981',
+                    pointRadius: 4
+                }]
+            });
+        }
+        // Initial load
+        showSkeletons();
+        updateDashboard();
+        // Refresh button
+        document.querySelector('.topbar .dark-toggle').addEventListener('click', toggleDarkMode);
+        document.querySelector('.topbar .search').addEventListener('input', function() { filterTable(this.value); });
+        // Sidebar nav
+        document.querySelectorAll('.sidebar-nav button').forEach(btn => {
+            btn.addEventListener('click', e => {
+                switchSection(btn.getAttribute('aria-label').toLowerCase());
+                if(btn.getAttribute('aria-label').toLowerCase()==='dashboard') updateDashboard();
+            });
+        });
+        // Chart.js chart creator
+        function createChart(ctx, type, data, options = {}) {
+            return new Chart(ctx, {
+                type: type,
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: '#18181b', font: { size: 14, weight: 600 } }
+                        },
+                        tooltip: {
+                            backgroundColor: '#7c3aed',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#2563eb',
+                            borderWidth: 2,
+                            bodyFont: { size: 16, weight: 600 },
+                            padding: 14,
+                            caretSize: 8,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: type !== 'doughnut' && type !== 'radar' ? {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#e5e7eb' },
+                            ticks: { color: '#18181b', font: { size: 14 } }
+                        },
+                        x: {
+                            grid: { color: '#e5e7eb' },
+                            ticks: { color: '#18181b', font: { size: 14 } }
+                        }
+                    } : {},
+                    ...options
+                }
+            });
+        }
+    </script>
+</body>
+</html>
